@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ドローン版ON-OFF制御シミュレータ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Sky Blue Tech -->
+    <!-- Application Structure Plan: ドローンの高度維持を題材に、ON-OFF制御の基本と課題を体験させる。UIは台車シミュレータの構成を踏襲し、手動/自動モードやゲーム要素を継承。中心的なインタラクションは、手動モードでの「推力ON」ボタン操作と、自動モードでの「不感帯」調整。物理モデルを「推力 - 重力 - 空気抵抗」に変更し、上昇(ON)と自由落下(OFF)という非対称な制御の難しさを可視化する。 -->
+    <!-- Visualization & Content Choices:
+        - ON-OFF制御ロジック -> Goal:制御則の理解 -> Viz:HTML/CSSによる擬似コード表示 -> Interaction:なし -> Justification:ドローンの高度維持におけるシンプルな制御アルゴリズムを明確に提示するため。
+        - 不感帯, 推力, 空気抵抗 -> Goal:ユーザーによる自由な調整 -> Viz:スライダー入力 -> Interaction:ドラッグで数値を変更し、即座にシミュレーションに反映 -> Justification:直感的な操作で、ON-OFF制御の挙動を決めるパラメータを調整する体験を提供するため。
+        - 応答グラフ -> Goal:システムの応答を可視化 -> Viz:Chart.js折れ線グラフ -> Interaction:動的更新 -> Justification:時間経過に伴う高度の変化、目標とのズレ、不感帯による振動の様子を明確に表示するため。
+        - ドローンアニメーション -> Goal:物理的な動きの直感的理解 -> Viz:HTML/CSS/JSアニメーション -> Interaction:シミュレーションと同期 -> Justification:グラフの抽象的な動きを、具体的なドローンの上下動として視覚化し、学習効果を高めるため。
+        - ゲーム要素（スコア履歴等） -> Goal:学習意欲の向上 -> Viz:動的テキスト -> Interaction:シミュレーション結果に応じて更新 -> Justification:手動操作の難しさと自動制御の優秀さを、得点という客観的指標で比較・実感させるため。 -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            max-height: 60vh;
+        }
+        #drone {
+            font-size: 40px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: bottom 0.05s linear;
+        }
+        .mode-btn.active {
+            border-bottom-color: rgb(59, 130, 246);
+            color: rgb(59, 130, 246);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <div class="container mx-auto px-6 py-4">
+            <h1 class="text-2xl font-bold text-blue-700">ドローン版ON-OFF制御シミュレータ</h1>
+            <p class="text-stone-600 mt-1">ドローンの高度維持を通じて、ON-OFF制御の難しさを体験しよう。</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+
+        <section id="concept" class="mb-12">
+            <h2 class="text-2xl font-semibold border-b-2 border-blue-200 pb-2 mb-4">1. ドローンのON-OFF制御とは？</h2>
+            <p class="mb-6">
+                ドローンの高度を一定に保つための、最もシンプルな制御方法です。プロペラの推力（上昇する力）をONにするか、OFF（自由落下）にするかの2択で高度を調整します。
+            </p>
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <h3 class="text-xl font-semibold mb-4">ドローンの高度維持ロジック</h3>
+                <div class="bg-stone-800 text-white font-mono p-4 rounded-lg text-left text-lg">
+                    <span class="text-cyan-400">if</span> (現在の高度 < 目標高度) {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-yellow-400">推力</span> = <span class="text-orange-400">ON</span>; // 上昇<br>
+                    } <span class="text-cyan-400">else</span> {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-yellow-400">推力</span> = <span class="text-orange-400">OFF</span>; // 自由落下<br>
+                    }
+                </div>
+                <p class="mt-4 text-stone-600">
+                    このシンプルな制御には、どのような難しさがあるのでしょうか。体験してみましょう。
+                </p>
+            </div>
+        </section>
+
+        <section id="simulation" class="mb-12">
+            <h2 class="text-2xl font-semibold border-b-2 border-blue-200 pb-2 mb-4">2. シミュレーションで体験する</h2>
+            
+            <div id="mode-selector" class="flex justify-center mb-6 border-b">
+                <button id="auto-mode-btn" class="mode-btn px-6 py-3 border-b-2 border-transparent text-stone-500">自動制御モード</button>
+                <button id="manual-mode-btn" class="mode-btn active px-6 py-3 border-b-2">手動制御モード</button>
+            </div>
+
+            <p id="mode-description" class="mb-6 text-center">
+                10秒チャレンジ！目標高度 ±1.0m の範囲に長く留まれ！
+            </p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Controls -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg relative">
+                    <h3 class="text-xl font-semibold mb-4">パラメータ設定</h3>
+                    
+                    <div id="auto-controls" class="hidden">
+                         <div id="auto-game-info" class="mb-4 p-3 bg-blue-50 rounded-lg text-center">
+                            <div class="text-sm text-stone-500">スコア</div>
+                            <div id="auto-game-score" class="text-2xl font-bold text-blue-700">0</div>
+                        </div>
+                        <div class="mb-6 text-lg">
+                           <span class="font-medium">目標高度: </span><span class="font-bold text-blue-700">20.0 m (固定)</span>
+                        </div>
+                        <div class="mb-6">
+                            <label for="deadband-slider" class="block font-medium mb-1">不感帯 (中心からの幅): <span id="deadband-value" class="font-bold text-blue-700">2.0</span> m</label>
+                            <input type="range" id="deadband-slider" min="0" max="10" step="0.5" value="2.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div id="auto-score-history" class="mt-4 text-left">
+                           <!-- Auto score history will be populated here -->
+                        </div>
+                        <div class="mt-4">
+                            <button id="toggle-scenarios-btn" class="w-full text-left font-semibold text-lg text-blue-800 p-3 bg-blue-100 rounded-lg hover:bg-blue-200 transition">
+                                シナリオを開く ▼
+                            </button>
+                            <div id="scenarios-container" class="hidden mt-4">
+                                <div class="flex flex-wrap gap-4 mb-6">
+                                    <button data-deadband="0" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S1: 不感帯なし</button>
+                                    <button data-deadband="0.5" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S2: 不感帯(狭)</button>
+                                    <button data-deadband="5.0" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S3: 不感帯(広)</button>
+                                </div>
+                                <div id="scenario-explanation" class="bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="manual-controls-params" class="hidden">
+                        <!-- This div is a placeholder for layout consistency -->
+                    </div>
+
+                    <hr class="my-6">
+
+                     <div class="mb-6">
+                        <p class="font-medium">空気抵抗: <span class="font-bold text-blue-700">0.2 (固定)</span></p>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="thrust-slider" class="block font-medium mb-1">推力: <span id="thrust-value" class="font-bold text-blue-700">10.0</span></label>
+                        <input type="range" id="thrust-slider" min="5" max="20" step="0.5" value="10.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <button id="run-button" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 mt-4">
+                        シミュレーション再実行
+                    </button>
+                </div>
+
+                <!-- Chart and Animation -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg">
+                     <h3 class="text-xl font-semibold mb-4">高度グラフ</h3>
+                    <div class="chart-container">
+                        <canvas id="responseChart"></canvas>
+                    </div>
+                    <h3 class="text-xl font-semibold my-4">ドローンの動き</h3>
+                    <div id="animation-container" class="relative w-24 h-96 mx-auto bg-sky-100 rounded-lg overflow-hidden border">
+                        <div id="target-zone" class="absolute w-full bg-green-500/20"></div>
+                        <div id="target-marker-line" class="absolute w-full border-t-2 border-dashed border-green-500"></div>
+                        <div id="drone" style="bottom: 0;">🚁</div>
+                        <div class="absolute bottom-1 right-1 text-xs text-stone-500">0m</div>
+                        <div class="absolute top-1 right-1 text-xs text-stone-500">40m</div>
+                    </div>
+                    <div class="mt-2 text-lg text-center">
+                        <div class="inline-block mx-4">
+                            <span>高度: </span>
+                            <span id="altitude-value" class="font-bold text-blue-600 tabular-nums w-24 inline-block text-left">0.00</span>
+                            <span> m</span>
+                        </div>
+                        <div class="inline-block mx-4">
+                            <span>偏差: </span>
+                            <span id="deviation-value" class="font-bold text-blue-600 tabular-nums w-24 inline-block text-left">+20.00</span>
+                            <span> m</span>
+                        </div>
+                         <div class="inline-block mx-4">
+                            <span>推力: </span>
+                            <span id="thrust-display-value" class="font-bold text-red-600 tabular-nums w-24 inline-block text-left">0.0</span>
+                            <span> N</span>
+                        </div>
+                    </div>
+                    <div id="manual-buttons-container" class="mt-4 text-center">
+                         <div id="game-info" class="mb-4 p-3 bg-blue-50 rounded-lg text-center max-w-xs mx-auto">
+                            <div class="flex justify-around items-center">
+                                <div>
+                                    <div class="text-sm text-stone-500">残り時間</div>
+                                    <div id="game-timer" class="text-2xl font-bold text-blue-700">10.0</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-stone-500">スコア</div>
+                                    <div id="game-score" class="text-2xl font-bold text-blue-700">0</div>
+                                </div>
+                            </div>
+                            <div id="game-result" class="mt-2 text-lg font-bold text-blue-800 h-6"></div>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 mb-4 max-w-xs mx-auto">
+                            <button id="thrust-btn" class="w-full h-24 bg-stone-200 rounded-lg text-2xl active:bg-blue-500 active:text-white transition select-none font-bold">
+                                推力 ON
+                            </button>
+                        </div>
+                        <div id="manual-score-history" class="mt-4 text-left max-w-xs mx-auto">
+                           <!-- Manual score history will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-white mt-12 py-6 border-t">
+        <div class="container mx-auto px-6 text-center text-stone-500">
+            <p>&copy; 2025 Interactive Control Simulator. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const deadbandSlider = document.getElementById('deadband-slider');
+        const thrustSlider = document.getElementById('thrust-slider');
+        const deadbandValue = document.getElementById('deadband-value');
+        const thrustValue = document.getElementById('thrust-value');
+        const chartCanvas = document.getElementById('responseChart');
+        const droneEl = document.getElementById('drone');
+        const altitudeValueEl = document.getElementById('altitude-value');
+        const deviationValueEl = document.getElementById('deviation-value');
+        const thrustDisplayValueEl = document.getElementById('thrust-display-value');
+        
+        const autoModeBtn = document.getElementById('auto-mode-btn');
+        const manualModeBtn = document.getElementById('manual-mode-btn');
+        const autoControls = document.getElementById('auto-controls');
+        const manualControlsParams = document.getElementById('manual-controls-params');
+        const modeDescription = document.getElementById('mode-description');
+        const thrustBtn = document.getElementById('thrust-btn');
+        
+        const gameTimerEl = document.getElementById('game-timer');
+        const gameScoreEl = document.getElementById('game-score');
+        const gameResultEl = document.getElementById('game-result');
+        const autoGameScoreEl = document.getElementById('auto-game-score');
+        const targetZoneEl = document.getElementById('target-zone');
+        const runButton = document.getElementById('run-button');
+        const toggleScenariosBtn = document.getElementById('toggle-scenarios-btn');
+        const scenariosContainer = document.getElementById('scenarios-container');
+        const scenarioButtons = document.querySelectorAll('.scenario-btn');
+        const explanationDiv = document.getElementById('scenario-explanation');
+        const manualScoreHistoryEl = document.getElementById('manual-score-history');
+        const autoScoreHistoryEl = document.getElementById('auto-score-history');
+        const manualButtonsContainer = document.getElementById('manual-buttons-container');
+
+        // State variables
+        let responseChart = null;
+        let simulationLoopId = null;
+        let currentMode = 'manual'; 
+        let manualState = 0; // 0: OFF, 1: ON
+        let simState = { y: 0.0, vy: 0.0, time: 0.0 }; // y for altitude
+        let lastTimestamp = 0;
+        
+        // Game variables
+        let scoreHistory = [];
+        let gameTimer = 10.0;
+        let timeInZone = 0.0;
+        let gameActive = false;
+        const gameDuration = 10.0;
+        const targetAltitude = 20.0;
+        const targetZoneThreshold = 1.0;
+
+        const explanations = {
+            's1': { title: 'シナリオ1: 不感帯なし', text: '不感帯がゼロの場合、目標高度をわずかに超えた瞬間にOFF、下回った瞬間にONが超高速で繰り返され、激しく振動します（チャタリング）。' },
+            's2': { title: 'シナリオ2: 不感帯(狭)', text: '狭い不感帯を設けることでチャタリングは抑制されますが、まだON/OFFの頻度は高く、細かく振動します。' },
+            's3': { title: 'シナリオ3: 不感帯(広)', text: '不感帯を広くするとON/OFFの頻度は減りますが、目標高度の上下で大きく変動し、精度が落ちます。' }
+        };
+
+        function switchMode(newMode) {
+            currentMode = newMode;
+            if (simulationLoopId) cancelAnimationFrame(simulationLoopId);
+            
+            if (currentMode === 'auto') {
+                autoModeBtn.classList.add('active');
+                manualModeBtn.classList.remove('active');
+                autoControls.classList.remove('hidden');
+                manualControlsParams.classList.add('hidden');
+                modeDescription.innerHTML = '最適な**不感帯**を見つけて高スコアを目指そう！';
+                manualButtonsContainer.classList.add('hidden');
+            } else {
+                manualModeBtn.classList.add('active');
+                autoModeBtn.classList.remove('active');
+                manualControlsParams.classList.remove('hidden');
+                autoControls.classList.add('hidden');
+                modeDescription.textContent = `${gameDuration}秒チャレンジ！目標 ${targetAltitude}m ±${targetZoneThreshold}m の範囲に長く留まれ！`;
+                manualButtonsContainer.classList.remove('hidden');
+            }
+            updateScoreHistoryDisplay();
+            updateSliderValues();
+            runSimulation();
+        }
+
+        function updateSliderValues() {
+            deadbandValue.textContent = parseFloat(deadbandSlider.value).toFixed(1);
+            thrustValue.textContent = parseFloat(thrustSlider.value).toFixed(1);
+
+            const maxAltitude = 40.0;
+            const targetPercent = (targetAltitude / maxAltitude) * 100;
+            const zoneHeightPercent = (targetZoneThreshold * 2 / maxAltitude) * 100;
+            
+            document.getElementById('target-marker-line').style.bottom = `${targetPercent}%`;
+            targetZoneEl.style.height = `${zoneHeightPercent}%`;
+            targetZoneEl.style.bottom = `calc(${targetPercent}% - ${zoneHeightPercent/2}%)`;
+        }
+        
+        function runSimulation() {
+            if (simulationLoopId) cancelAnimationFrame(simulationLoopId);
+            
+            simState = { y: 0.0, vy: 0.0, time: 0.0 };
+            
+            if (currentMode === 'auto') {
+                runAutoSimulation();
+            } else {
+                gameTimer = gameDuration;
+                timeInZone = 0.0;
+                gameActive = true;
+                gameResultEl.textContent = '';
+                
+                initializeChart(targetAltitude);
+                updateUI(simState.y, 0);
+                
+                lastTimestamp = performance.now();
+                simulationLoopId = requestAnimationFrame(manualSimulationLoop);
+            }
+        }
+        
+        function manualSimulationLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            const thrust = parseFloat(thrustSlider.value);
+            const m = 0.5; // mass
+            const g = 9.8; // gravity
+            const c = 0.2; // air resistance
+
+            if (gameActive) {
+                gameTimer -= dt;
+                if (gameTimer <= 0) {
+                    gameTimer = 0;
+                    gameActive = false;
+                    manualState = 0;
+                    
+                    const finalScore = Math.round((timeInZone / gameDuration) * 100);
+                    scoreHistory.push({ score: finalScore, mode: '手動' });
+                    updateScoreHistoryDisplay();
+
+                    let message = `結果: ${finalScore}点！`;
+                    if (finalScore > 90) message += " エースパイロット！";
+                    else if (finalScore > 70) message += " 素晴らしい！";
+                    else if (finalScore > 50) message += " あと少し！";
+                    else message += " もう一度挑戦！";
+                    gameResultEl.textContent = message;
+                }
+
+                if (Math.abs(targetAltitude - simState.y) <= targetZoneThreshold) timeInZone += dt;
+                
+                const score = Math.round((timeInZone / gameDuration) * 100);
+                gameTimerEl.textContent = gameTimer.toFixed(1);
+                gameScoreEl.textContent = score;
+            }
+
+            const u = manualState * thrust;
+            const resistanceForce = -c * simState.vy;
+            const a = (u - m * g + resistanceForce) / m;
+
+            simState.vy += a * dt;
+            simState.y += simState.vy * dt;
+            if (simState.y < 0) {
+                simState.y = 0;
+                simState.vy = 0;
+            }
+            simState.time += dt;
+
+            updateChartRealtime(simState.time, simState.y);
+            updateUI(simState.y, u);
+            
+            if (gameActive) {
+                simulationLoopId = requestAnimationFrame(manualSimulationLoop);
+            }
+        }
+        
+        function updateScoreHistoryDisplay() {
+            const manualScores = scoreHistory.filter(r => r.mode === '手動');
+            manualScoreHistoryEl.innerHTML = createScoreHTML('手動', manualScores);
+            const autoScores = scoreHistory.filter(r => r.mode.startsWith('自動'));
+            autoScoreHistoryEl.innerHTML = createScoreHTML('自動', autoScores);
+        }
+
+        function createScoreHTML(mode, scores) {
+            let listHTML = '';
+            if (scores.length === 0) {
+                listHTML = '<li class="text-stone-400">まだ記録がありません</li>';
+            } else {
+                [...scores].reverse().slice(0, 10).forEach(record => {
+                    let detail = record.mode === '手動' ? `スコア: <span class="font-bold">${record.score}点</span>` : `(${record.mode.replace('自動(', '').replace(')', '')}) スコア: <span class="font-bold">${record.score}点</span>`;
+                    listHTML += `<li>${detail}</li>`;
+                });
+            }
+
+            let averageScoreText = '平均スコア: --';
+            if (scores.length > 0) {
+                const totalScore = scores.reduce((sum, record) => sum + record.score, 0);
+                const averageScore = totalScore / scores.length;
+                averageScoreText = `平均スコア: ${averageScore.toFixed(1)}点`;
+            }
+
+            return `
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-semibold">${mode}スコア履歴</h4>
+                    <button class="reset-scores-btn text-xs text-blue-600 hover:text-blue-800 underline" data-mode="${mode}">リセット</button>
+                </div>
+                <ol class="list-decimal list-inside text-sm text-stone-600 h-24 overflow-y-auto bg-stone-50 p-2 rounded">${listHTML}</ol>
+                <div class="mt-2 text-center font-bold">${averageScoreText}</div>
+            `;
+        }
+
+        function runAutoSimulation() {
+            const deadband = parseFloat(deadbandSlider.value);
+            const thrust = parseFloat(thrustSlider.value);
+            const m = 0.5;
+            const g = 9.8;
+            const c = 0.2;
+            
+            let y = 0.0, vy = 0.0, state = 1; // Start by going up
+            
+            const dt = 0.01;
+            const duration = 20.0;
+            const steps = duration / dt;
+            let autoTimeInZone = 0;
+
+            const timeData = [], altitudeData = [], targetData = [], controlInputData = [];
+
+            for (let i = 0; i <= steps; i++) {
+                const currentTime = i * dt;
+                timeData.push(currentTime); 
+                altitudeData.push(y); 
+                targetData.push(targetAltitude);
+
+                if (y > targetAltitude + deadband) state = 0; // Thrust OFF
+                else if (y < targetAltitude - deadband) state = 1; // Thrust ON
+
+                if (Math.abs(targetAltitude - y) <= targetZoneThreshold) autoTimeInZone += dt;
+                
+                const u = state * thrust;
+                controlInputData.push(u);
+                const resistanceForce = -c * vy;
+                const a = (u - m * g + resistanceForce) / m;
+                vy += a * dt; 
+                y += vy * dt;
+                if (y < 0) { y = 0; vy = 0; }
+            }
+            const finalScore = Math.round((autoTimeInZone / duration) * 100);
+            autoGameScoreEl.textContent = finalScore;
+            scoreHistory.push({ score: finalScore, mode: `自動(d:${deadband})` });
+            updateScoreHistoryDisplay();
+            displayAutoSimulationResults(timeData, altitudeData, targetData, controlInputData);
+        }
+        
+        function displayAutoSimulationResults(timeData, altitudeData, targetData, controlInputData) {
+            if (responseChart) responseChart.destroy();
+            initializeChartWithData(timeData, altitudeData, targetData);
+
+            let animFrameId;
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            const duration = timeData[timeData.length - 1] * 1000;
+            let startTime = null;
+            const dt = timeData[1] - timeData[0];
+            
+            function animate(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const elapsedTime = timestamp - startTime;
+                const currentSimTime = elapsedTime / 1000;
+                const dataIndex = Math.min(Math.floor(currentSimTime / dt), altitudeData.length - 1);
+                updateUI(altitudeData[dataIndex], controlInputData[dataIndex]);
+                if (elapsedTime < duration) animFrameId = requestAnimationFrame(animate);
+            }
+            animFrameId = requestAnimationFrame(animate);
+        }
+
+        function updateUI(altitude, thrust) {
+            const maxAltitude = 40.0;
+            const altPercent = (altitude / maxAltitude) * 100;
+            droneEl.style.bottom = `calc(${altPercent}% - 20px)`;
+            altitudeValueEl.textContent = altitude.toFixed(2);
+            const deviation = targetAltitude - altitude;
+            deviationValueEl.textContent = (deviation >= 0 ? '+' : '') + deviation.toFixed(2);
+            if(thrust !== undefined) {
+                 thrustDisplayValueEl.textContent = thrust.toFixed(1);
+            }
+        }
+        
+        function initializeChart(target) {
+             if (responseChart) responseChart.destroy();
+             const targetData = [{x: 0, y: target}, {x: gameDuration, y: target}];
+             initializeChartWithData([0], [0], targetData);
+             responseChart.data.datasets[0].data = []; 
+        }
+
+        function updateChartRealtime(time, altitude) {
+            if (!responseChart || !responseChart.data) return;
+            responseChart.data.labels.push(time);
+            responseChart.data.datasets[0].data.push(altitude);
+            
+            const maxDataPoints = 1000;
+            if (responseChart.data.labels.length > maxDataPoints) {
+                responseChart.data.labels.shift();
+                responseChart.data.datasets[0].data.shift();
+            }
+            responseChart.options.scales.x.max = gameDuration;
+            responseChart.update('none');
+        }
+
+        function initializeChartWithData(time, altitude, target) {
+            if(responseChart) responseChart.destroy();
+            const ctx = document.getElementById('responseChart').getContext('2d');
+            responseChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: time,
+                    datasets: [
+                        { label: 'ドローンの高度', data: altitude, borderColor: 'rgb(59, 130, 246)', borderWidth: 3, pointRadius: 0 },
+                        { label: '目標高度', data: target, borderColor: 'rgb(245, 158, 11)', borderWidth: 2, pointRadius: 0, borderDash: [5, 5] },
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', title: { display: true, text: '時間 (s)' } },
+                        y: { type: 'linear', title: { display: true, text: '高度 (m)' }, min: 0, max: 40 }
+                    },
+                     plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        function updateExplanation(scenarioKey) {
+            explanationDiv.innerHTML = `<p>${explanations[scenarioKey].text}</p>`;
+        }
+        
+        // Event Listeners
+        autoModeBtn.addEventListener('click', () => switchMode('auto'));
+        manualModeBtn.addEventListener('click', () => switchMode('manual'));
+        
+        const setManualState = (state) => { if(gameActive) manualState = state; };
+        thrustBtn.addEventListener('mousedown', () => setManualState(1));
+        thrustBtn.addEventListener('mouseup', () => setManualState(0));
+        thrustBtn.addEventListener('mouseleave', () => {if(manualState === 1) setManualState(0);});
+        thrustBtn.addEventListener('touchstart', (e) => { e.preventDefault(); setManualState(1); });
+        thrustBtn.addEventListener('touchend', () => setManualState(0));
+        
+        [deadbandSlider, thrustSlider].forEach(slider => {
+            slider.addEventListener('input', updateSliderValues);
+            slider.addEventListener('change', () => { if (currentMode === 'auto') runSimulation(); });
+        });
+        
+        runButton.addEventListener('click', runSimulation);
+
+        document.body.addEventListener('click', function(event) {
+            if (event.target.matches('.reset-scores-btn')) {
+                const mode = event.target.dataset.mode;
+                scoreHistory = scoreHistory.filter(r => !r.mode.startsWith(mode));
+                updateScoreHistoryDisplay();
+            }
+        });
+
+        toggleScenariosBtn.addEventListener('click', () => {
+            const isHidden = scenariosContainer.classList.toggle('hidden');
+            toggleScenariosBtn.textContent = isHidden ? 'シナリオを開く ▼' : 'シナリオを閉じる ▲';
+        });
+
+        scenarioButtons.forEach((button, index) => {
+            button.addEventListener('click', () => {
+                deadbandSlider.value = button.dataset.deadband;
+                updateSliderValues();
+                runSimulation();
+                updateExplanation(`s${index + 1}`);
+            });
+        });
+
+        window.addEventListener('load', () => {
+            switchMode('manual');
+        });
+    </script>
+</body>
+</html>
+
