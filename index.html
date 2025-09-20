@@ -98,6 +98,9 @@
                             <label for="deadband-slider" class="block font-medium mb-1">不感帯 (中心からの幅): <span id="deadband-value" class="font-bold text-blue-700">2.0</span> m</label>
                             <input type="range" id="deadband-slider" min="0" max="10" step="0.5" value="2.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
                         </div>
+                        <button id="run-button-auto" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
+                            シミュレーション再実行
+                        </button>
                         <div id="auto-score-history" class="mt-4 text-left">
                            <!-- Auto score history will be populated here -->
                         </div>
@@ -116,8 +119,10 @@
                         </div>
                     </div>
                     
-                    <div id="manual-controls-params" class="hidden">
-                        <!-- This div is a placeholder for layout consistency -->
+                    <div id="manual-controls-params">
+                        <div id="manual-score-history" class="mt-4 text-left">
+                           <!-- Manual score history will be populated here -->
+                        </div>
                     </div>
 
                     <hr class="my-6">
@@ -130,10 +135,6 @@
                         <label for="thrust-slider" class="block font-medium mb-1">推力: <span id="thrust-value" class="font-bold text-blue-700">10.0</span></label>
                         <input type="range" id="thrust-slider" min="5" max="20" step="0.5" value="10.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
                     </div>
-
-                    <button id="run-button" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 mt-4">
-                        シミュレーション再実行
-                    </button>
                 </div>
 
                 <!-- Chart and Animation -->
@@ -181,13 +182,13 @@
                             </div>
                             <div id="game-result" class="mt-2 text-lg font-bold text-blue-800 h-6"></div>
                         </div>
-                        <div class="flex flex-col items-center gap-2 mb-4 max-w-xs mx-auto">
-                            <button id="thrust-btn" class="w-full h-24 bg-stone-200 rounded-lg text-2xl active:bg-blue-500 active:text-white transition select-none font-bold">
+                        <div class="flex items-center justify-center gap-4 mb-4 max-w-xs mx-auto">
+                            <button id="thrust-btn" class="w-2/3 h-24 bg-stone-200 rounded-lg text-2xl active:bg-blue-500 active:text-white transition select-none font-bold">
                                 推力 ON
                             </button>
-                        </div>
-                        <div id="manual-score-history" class="mt-4 text-left max-w-xs mx-auto">
-                           <!-- Manual score history will be populated here -->
+                            <button id="run-button-manual" class="w-1/3 h-24 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
+                               実行
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -226,7 +227,8 @@
         const gameResultEl = document.getElementById('game-result');
         const autoGameScoreEl = document.getElementById('auto-game-score');
         const targetZoneEl = document.getElementById('target-zone');
-        const runButton = document.getElementById('run-button');
+        const runButtonAuto = document.getElementById('run-button-auto');
+        const runButtonManual = document.getElementById('run-button-manual');
         const toggleScenariosBtn = document.getElementById('toggle-scenarios-btn');
         const scenariosContainer = document.getElementById('scenarios-container');
         const scenarioButtons = document.querySelectorAll('.scenario-btn');
@@ -546,7 +548,8 @@
             slider.addEventListener('change', () => { if (currentMode === 'auto') runSimulation(); });
         });
         
-        runButton.addEventListener('click', runSimulation);
+        runButtonManual.addEventListener('click', runSimulation);
+        runButtonAuto.addEventListener('click', runSimulation);
 
         document.body.addEventListener('click', function(event) {
             if (event.target.matches('.reset-scores-btn')) {
