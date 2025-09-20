@@ -82,63 +82,8 @@
                 10秒チャレンジ！目標高度 ±1.0m の範囲に長く留まれ！
             </p>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Controls -->
-                <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg relative">
-                    <h3 class="text-xl font-semibold mb-4">パラメータ設定</h3>
-                    
-                    <div id="auto-controls" class="hidden">
-                         <div id="auto-game-info" class="mb-4 p-3 bg-blue-50 rounded-lg text-center">
-                            <div class="text-sm text-stone-500">スコア</div>
-                            <div id="auto-game-score" class="text-2xl font-bold text-blue-700">0</div>
-                        </div>
-                        <div class="mb-6 text-lg">
-                           <span class="font-medium">目標高度: </span><span class="font-bold text-blue-700">20.0 m (固定)</span>
-                        </div>
-                        <div class="mb-6">
-                            <label for="deadband-slider" class="block font-medium mb-1">不感帯 (中心からの幅): <span id="deadband-value" class="font-bold text-blue-700">2.0</span> m</label>
-                            <input type="range" id="deadband-slider" min="0" max="10" step="0.5" value="2.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
-                        </div>
-                        <button id="run-button-auto" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
-                            シミュレーション再実行
-                        </button>
-                        <div id="auto-score-history" class="mt-4 text-left">
-                           <!-- Auto score history will be populated here -->
-                        </div>
-                        <div class="mt-4">
-                            <button id="toggle-scenarios-btn" class="w-full text-left font-semibold text-lg text-blue-800 p-3 bg-blue-100 rounded-lg hover:bg-blue-200 transition">
-                                シナリオを開く ▼
-                            </button>
-                            <div id="scenarios-container" class="hidden mt-4">
-                                <div class="flex flex-wrap gap-4 mb-6">
-                                    <button data-deadband="0" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S1: 不感帯なし</button>
-                                    <button data-deadband="0.5" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S2: 不感帯(狭)</button>
-                                    <button data-deadband="5.0" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S3: 不感帯(広)</button>
-                                </div>
-                                <div id="scenario-explanation" class="bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="manual-controls-params">
-                        <div id="manual-score-history" class="mt-4 text-left">
-                           <!-- Manual score history will be populated here -->
-                        </div>
-                    </div>
-
-                    <hr class="my-6">
-
-                     <div class="mb-6">
-                        <p class="font-medium">空気抵抗: <span class="font-bold text-blue-700">0.2 (固定)</span></p>
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="thrust-slider" class="block font-medium mb-1">推力: <span id="thrust-value" class="font-bold text-blue-700">10.0</span></label>
-                        <input type="range" id="thrust-slider" min="5" max="20" step="0.5" value="10.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-                </div>
-
-                <!-- Chart and Animation -->
-                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg">
+                <!-- Visuals Column -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg lg:order-2">
                      <h3 class="text-xl font-semibold mb-4">高度グラフ</h3>
                     <div class="chart-container">
                         <canvas id="responseChart"></canvas>
@@ -190,6 +135,61 @@
                                実行
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Controls Column -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg relative lg:order-1">
+                    <h3 class="text-xl font-semibold mb-4">パラメータ設定</h3>
+                    
+                    <div id="auto-controls" class="hidden">
+                         <div id="auto-game-info" class="mb-4 p-3 bg-blue-50 rounded-lg text-center">
+                            <div class="text-sm text-stone-500">スコア</div>
+                            <div id="auto-game-score" class="text-2xl font-bold text-blue-700">0</div>
+                        </div>
+                        <div class="mb-6 text-lg">
+                           <span class="font-medium">目標高度: </span><span class="font-bold text-blue-700">20.0 m (固定)</span>
+                        </div>
+                        <div class="mb-6">
+                            <label for="deadband-slider" class="block font-medium mb-1">不感帯 (中心からの幅): <span id="deadband-value" class="font-bold text-blue-700">2.0</span> m</label>
+                            <input type="range" id="deadband-slider" min="0" max="10" step="0.5" value="2.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <button id="run-button-auto" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
+                           シミュレーション再実行
+                        </button>
+                        <div id="auto-score-history" class="mt-4 text-left">
+                           <!-- Auto score history will be populated here -->
+                        </div>
+                        <div class="mt-4">
+                            <button id="toggle-scenarios-btn" class="w-full text-left font-semibold text-lg text-blue-800 p-3 bg-blue-100 rounded-lg hover:bg-blue-200 transition">
+                                シナリオを開く ▼
+                            </button>
+                            <div id="scenarios-container" class="hidden mt-4">
+                                <div class="flex flex-wrap gap-4 mb-6">
+                                    <button data-deadband="0" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S1: 不感帯なし</button>
+                                    <button data-deadband="0.5" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S2: 不感帯(狭)</button>
+                                    <button data-deadband="5.0" class="scenario-btn bg-white border border-stone-300 px-4 py-2 rounded-lg hover:bg-stone-100 hover:border-blue-500 transition">S3: 不感帯(広)</button>
+                                </div>
+                                <div id="scenario-explanation" class="bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="manual-controls-params">
+                        <div id="manual-score-history" class="mt-4 text-left">
+                           <!-- Manual score history will be populated here -->
+                        </div>
+                    </div>
+
+                    <hr class="my-6">
+
+                     <div class="mb-6">
+                        <p class="font-medium">空気抵抗: <span class="font-bold text-blue-700">0.2 (固定)</span></p>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="thrust-slider" class="block font-medium mb-1">推力: <span id="thrust-value" class="font-bold text-blue-700">10.0</span></label>
+                        <input type="range" id="thrust-slider" min="5" max="20" step="0.5" value="10.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
                     </div>
                 </div>
             </div>
@@ -549,8 +549,7 @@
         });
         
         runButtonManual.addEventListener('click', runSimulation);
-        runButtonAuto.addEventListener('click', runSimulation);
-
+        
         document.body.addEventListener('click', function(event) {
             if (event.target.matches('.reset-scores-btn')) {
                 const mode = event.target.dataset.mode;
